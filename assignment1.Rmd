@@ -1,7 +1,7 @@
 ---
 title: "Statistical assignment 1"
-author: "[add your name and candidate number here]"
-date: "[add date here]"
+author: "Emilia Korobowicz; 143801"
+date: "02/02/2019"
 output: github_document
 ---
 
@@ -15,7 +15,7 @@ In this assignment you will work with the individual level data from wave 8 of t
 
 ```{r}
 library(tidyverse)
-Data <- ...
+Data <- read_tsv("/Users/emiliakorobowicz/Desktop/DataScience3/EmilysRepo/NewRepo/Data/UKDA-6614-tab/tab/ukhls_w8/h_indresp.tab")
 ```
 
 Now you have got your data frame stored as Data. 
@@ -29,8 +29,7 @@ First, you need to select the variables for the analysis. You want to keep the f
 Complete the code below to select those variables from the data frame and save the result.
 
 ```{r}
-Data <- Data %>%
-        select(...)
+Data <- Data <- Data %>% select(c("h_eumem", "h_sex_dv", "h_age_dv", "h_memorig"))
 ```
 
 ## Filter observations (10 points)
@@ -38,8 +37,8 @@ Data <- Data %>%
 To make nationally representative estimates from the Understanding Society data we would need to use weight coefficients. There are many different types of weight coefficients that can be used depending on the question and the level of analysis (see the User Guide, pp. 65-71). We will not do this in this assignment. However, what we want to do is to keep data from the original Understanding Society sample only (ukhls gb 2009-10), dropping  data for Northern Ireland, the BHPS cohort members and ethnic minority boost samples. This will make data closer to be representative for Great Britain. You need to choose the observations where *h_memorig* has the value of 1.
 
 ```{r}
-Data <- Data %>%
-        filter(...)
+Data <- Data <- Data %>% filter(h_memorig == 1)
+table(Data$h_memorig, exclude = NULL)
 ```
 
 ## Recode data (20 points)
@@ -64,12 +63,22 @@ In all cases, we want to create new variables.
 
 ```{r}
 Data <- Data %>%
-        mutate(EU = ...
-      
-        ) %>%
-        mutate(sex = ...) %>%
-        mutate(agegr = ...
-        )
+    mutate(EU = ifelse(h_eumem < 0, NA, (ifelse(h_eumem == 2, 0, h_eumem)))) %>%
+    
+    mutate(sex = ifelse(h_sex_dv == 2, "female", 
+                        ifelse(h_sex_dv == 1, "male", 
+                               ifelse(h_sex_dv == 0, NA, h_sex_dv)))
+           
+           
+    ) %>%
+    mutate(agegr = ifelse(h_age_dv %in% c(16:25), "16 to 25", 
+                          ifelse(h_age_dv %in% c(26:40), "26 to 40", 
+                                 ifelse(h_age_dv %in% c(41:55), "41 to 55", 
+                                        ifelse(h_age_dv %in% c(56:70), "56 to 70", 
+                                               ifelse(h_age_dv > 70, "over 70", h_age_dv)))))
+    )
+
+
 
 ```
 
@@ -78,12 +87,22 @@ Data <- Data %>%
 Let us **dplyr** to calculate how many people in the sample supported Remain and Leave, both as absolute numbers and percentages.
 
 ```{r}
-Data %>%
-        ...
-        
+Data  %>%
+    summarise(N_Remain = sum(na.omit(EU) == 1), 
+              P_Remain = 100*(sum(na.omit(EU) == 1)/length(na.omit(EU))), 
+              N_Leave = sum(na.omit(EU) == 0), 
+              P_Leave = 100*(sum(na.omit(EU) == 0)/length(na.omit(EU)))
+    )
+
+
+
 ```
 
 Write a couple of sentences with the interpretation of this result. How this compares with the result of the 2016 referendum? Why?
+
+  The result I've obtained differs from that of the 2016 referendum when the UK has voted to leave the EU by 52% to 48%. Here, on the other hand, the number of Remainers is greater. There are several reasons why my outcome doesn't match what happened in reality. 
+  Firstly, to make good estimates, we need a dataset that is nationally representative. The ideal way to do this is to use weight coefficients and correct, for example, for minor ethnic groups etc. However, in this case, we have been asked to not do this.
+  There are several other issues with the survey itself, which could have had an impact on the obtained result. Most notably, many responses were invalid, recoded to NA and not counted. Additionally, the Understanding Society Survey interviews are carried out face-to-face in respondents’ homes by trained interviewers, a method prone to the social desirability bias.
 
 ## Summarise data by sex and age (30 points)
 
@@ -92,9 +111,35 @@ Now let us look at the support for Leave and Remain by sex and age. Use your new
 
 ```{r}
 Data %>%
-        ...
-        
+  subset(!is.na(sex)) %>%
+
+
+      group_by(sex, agegr) %>%
+    summarise(N_Remain = sum(na.omit(EU) == 1), 
+              P_Remain = 100*(sum(na.omit(EU) == 1)/length(na.omit(EU))), 
+              N_Leave = sum(na.omit(EU) == 0), 
+              P_Leave = 100*(sum(na.omit(EU) == 0)/length(na.omit(EU))),
+    )
+
+Data %>%
+  subset(!is.na(sex)) %>%
+
+
+      group_by(sex) %>%
+    summarise(N_Remain = sum(na.omit(EU) == 1), 
+              P_Remain = 100*(sum(na.omit(EU) == 1)/length(na.omit(EU))), 
+              N_Leave = sum(na.omit(EU) == 0), 
+              P_Leave = 100*(sum(na.omit(EU) == 0)/length(na.omit(EU))),
+    )
+
+
+
 ```
 
+Write a couple of sentences interpreting your results
 
-Write a couple of sentences interpreting your results.
+  For both males and females, the percentages of Remainers decreases with age. The highest percentage of Remainers is found in the youngest, 16 to 25, age group. Consequently, the oldest respondents (over 70) display the lowest percentage of supporters of the UK's membership in the EU. Similar patterns have been observed in the actual 2016 EU referendum. There has been a wide debate about the generational divide over the issue of Brexit in the mainstream media.
+  
+ In a separate line of code, I've grouped only by sex to see how the two genders compare, regardless of the age group they belong to. Females are more supportive of the Remain camp, with 56,7% declaring themselves pro-EU, compared to only 51,4% of male respondents doing so. 
+  
+
